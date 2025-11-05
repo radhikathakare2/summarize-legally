@@ -7,6 +7,7 @@ import { useNavigate } from "react-router-dom";
 import ClauseViewer from "@/components/ClauseViewer";
 import RiskChart from "@/components/RiskChart";
 import { useToast } from "@/hooks/use-toast";
+import jsPDF from "jspdf";
 
 // Demo data as fallback
 const demoResults = {
@@ -55,6 +56,104 @@ const Results = () => {
     }
   }, [toast]);
 
+  const exportToPDF = () => {
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const margin = 20;
+    let yPos = 20;
+
+    // Title
+    doc.setFontSize(20);
+    doc.text("Termify Analysis Report", margin, yPos);
+    yPos += 15;
+
+    // Statistics
+    doc.setFontSize(12);
+    doc.text(`Total Clauses: ${results.statistics.totalClauses}`, margin, yPos);
+    yPos += 7;
+    doc.text(`High Risk: ${results.statistics.highRisk}`, margin, yPos);
+    yPos += 7;
+    doc.text(`Medium Risk: ${results.statistics.mediumRisk}`, margin, yPos);
+    yPos += 7;
+    doc.text(`Low Risk: ${results.statistics.lowRisk}`, margin, yPos);
+    yPos += 15;
+
+    // Clauses
+    doc.setFontSize(16);
+    doc.text("Clauses", margin, yPos);
+    yPos += 10;
+
+    results.clauses.forEach((clause, index) => {
+      if (yPos > 270) {
+        doc.addPage();
+        yPos = 20;
+      }
+
+      doc.setFontSize(12);
+      doc.setFont(undefined, 'bold');
+      doc.text(`${index + 1}. ${clause.title}`, margin, yPos);
+      yPos += 7;
+
+      doc.setFont(undefined, 'normal');
+      doc.setFontSize(10);
+      doc.text(`Risk: ${clause.risk.toUpperCase()}`, margin, yPos);
+      yPos += 7;
+
+      const summaryLines = doc.splitTextToSize(
+        `Summary: ${clause.summaryEn}`,
+        pageWidth - 2 * margin
+      );
+      doc.text(summaryLines, margin, yPos);
+      yPos += summaryLines.length * 5 + 5;
+
+      const rationaleLines = doc.splitTextToSize(
+        `Rationale: ${clause.rationale}`,
+        pageWidth - 2 * margin
+      );
+      doc.text(rationaleLines, margin, yPos);
+      yPos += rationaleLines.length * 5 + 10;
+    });
+
+    doc.save("termify-analysis.pdf");
+    toast({
+      title: "PDF exported",
+      description: "Your analysis has been downloaded as a PDF.",
+    });
+  };
+
+  const exportToCSV = () => {
+    const headers = ["ID", "Title", "Category", "Risk", "Summary (English)", "Summary (Hindi)", "Rationale"];
+    const rows = results.clauses.map(clause => [
+      clause.id,
+      clause.title,
+      clause.category,
+      clause.risk,
+      clause.summaryEn,
+      clause.summaryHi,
+      clause.rationale,
+    ]);
+
+    const csvContent = [
+      headers.join(","),
+      ...rows.map(row => row.map(cell => `"${cell}"`).join(","))
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", "termify-analysis.csv");
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    toast({
+      title: "CSV exported",
+      description: "Your analysis has been downloaded as a CSV file.",
+    });
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-secondary/20">
       {/* Header */}
@@ -71,11 +170,11 @@ const Results = () => {
             </Button>
             
             <div className="flex items-center gap-3">
-              <Button variant="outline" className="gap-2">
+              <Button variant="outline" className="gap-2" onClick={exportToPDF}>
                 <Download className="w-4 h-4" />
                 Export PDF
               </Button>
-              <Button variant="outline" className="gap-2">
+              <Button variant="outline" className="gap-2" onClick={exportToCSV}>
                 <FileText className="w-4 h-4" />
                 Export CSV
               </Button>
