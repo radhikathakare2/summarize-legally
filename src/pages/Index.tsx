@@ -1,38 +1,11 @@
-import { useState, useEffect } from "react";
-import { Upload, FileText, Shield, Languages, BarChart3, LogOut } from "lucide-react";
-import { useNavigate } from "react-router-dom";
-import { Button } from "@/components/ui/button";
+import { useState } from "react";
+import { Upload, FileText, Shield, Languages, BarChart3 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
 import FileUpload from "@/components/FileUpload";
 import TextPaste from "@/components/TextPaste";
 
 const Index = () => {
-  const navigate = useNavigate();
-  const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("upload");
-  const [user, setUser] = useState<any>(null);
-
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-    });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      setUser(session?.user ?? null);
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    toast({
-      title: "Signed out",
-      description: "You have been successfully signed out.",
-    });
-  };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-secondary/20">
@@ -48,17 +21,6 @@ const Index = () => {
           <nav className="hidden md:flex items-center gap-6">
             <a href="#" className="text-sm font-medium hover:text-primary transition-colors">Home</a>
             <a href="#how-it-works" className="text-sm font-medium hover:text-primary transition-colors">How It Works</a>
-            {user ? (
-              <div className="flex items-center gap-3">
-                <span className="text-sm text-muted-foreground">{user.email}</span>
-                <Button variant="outline" onClick={handleSignOut} className="gap-2">
-                  <LogOut className="w-4 h-4" />
-                  Sign Out
-                </Button>
-              </div>
-            ) : (
-              <Button variant="outline" onClick={() => navigate("/auth")}>Sign In</Button>
-            )}
           </nav>
         </div>
       </header>
