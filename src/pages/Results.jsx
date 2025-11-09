@@ -18,7 +18,7 @@ const demoResults = {
       originalText: "We collect personal information including but not limited to your name, email address, phone number, browsing history, location data, and device information. This information may be shared with our partners, affiliates, and third-party service providers for marketing, advertising, and analytics purposes without requiring your explicit consent.",
       summaryEn: "Company collects extensive personal data and shares it with third parties for marketing without explicit consent.",
       summaryHi: "कंपनी व्यापक व्यक्तिगत डेटा एकत्र करती है और स्पष्ट सहमति के बिना मार्केटिंग के लिए तीसरे पक्ष के साथ साझा करती है।",
-      risk: "high" as const,
+      risk: "high",
       rationale: "Shares personal data with third parties without explicit consent. Broad data collection without clear purpose limitation.",
       category: "Privacy & Data",
     },
@@ -36,7 +36,7 @@ const Results = () => {
   const { toast } = useToast();
   const [results, setResults] = useState(demoResults);
   const [selectedClause, setSelectedClause] = useState(results.clauses[0]);
-  const [language, setLanguage] = useState<"en" | "hi">("en");
+  const [language, setLanguage] = useState("en");
 
   useEffect(() => {
     // Load results from sessionStorage

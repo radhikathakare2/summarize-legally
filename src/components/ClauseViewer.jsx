@@ -4,25 +4,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AlertCircle, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-interface Clause {
-  id: number;
-  title: string;
-  originalText: string;
-  summaryEn: string;
-  summaryHi: string;
-  risk: "high" | "medium" | "low";
-  rationale: string;
-  category: string;
-}
-
-interface ClauseViewerProps {
-  clause: Clause;
-  language: "en" | "hi";
-  onLanguageChange: (lang: "en" | "hi") => void;
-}
-
-const ClauseViewer = ({ clause, language, onLanguageChange }: ClauseViewerProps) => {
-  const getRiskColor = (risk: string) => {
+const ClauseViewer = ({ clause, language, onLanguageChange }) => {
+  const getRiskColor = (risk) => {
     switch (risk) {
       case "high":
         return "bg-risk-high/10 text-risk-high border-risk-high/30";

@@ -11,7 +11,7 @@ const FileUpload = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  const onDrop = useCallback(async (acceptedFiles: File[]) => {
+  const onDrop = useCallback(async (acceptedFiles) => {
     if (acceptedFiles.length === 0) return;
 
     const file = acceptedFiles[0];

@@ -1,14 +1,6 @@
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts";
 
-interface RiskChartProps {
-  data: {
-    highRisk: number;
-    mediumRisk: number;
-    lowRisk: number;
-  };
-}
-
-const RiskChart = ({ data }: RiskChartProps) => {
+const RiskChart = ({ data }) => {
   const chartData = [
     { name: "High Risk", value: data.highRisk, color: "hsl(0 84% 60%)" },
     { name: "Medium Risk", value: data.mediumRisk, color: "hsl(45 93% 47%)" },
