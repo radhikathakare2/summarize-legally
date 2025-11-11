@@ -60,11 +60,11 @@ const Index = () => {
         <div className="max-w-3xl mx-auto mt-12">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="grid w-full max-w-md mx-auto grid-cols-2">
-              <TabsTrigger value="upload" className="gap-2">
+              <TabsTrigger value="upload" className="flex items-center gap-2">
                 <Upload className="w-4 h-4" />
                 Upload File
               </TabsTrigger>
-              <TabsTrigger value="paste" className="gap-2">
+              <TabsTrigger value="paste" className="flex items-center gap-2">
                 <FileText className="w-4 h-4" />
                 Paste Text
               </TabsTrigger>
