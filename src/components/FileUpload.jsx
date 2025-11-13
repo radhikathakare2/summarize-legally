@@ -16,7 +16,6 @@ const FileUpload = () => {
 
     const file = acceptedFiles[0];
     
-    // Validate file size (max 50MB)
     if (file.size > 50 * 1024 * 1024) {
       toast({
         title: "File too large",
@@ -29,44 +28,117 @@ const FileUpload = () => {
     setIsUploading(true);
 
     try {
-      // For text files, read directly
-      if (file.type === 'text/plain') {
+      const fileType = file.type;
+      const fileExtension = file.name.split('.').pop()?.toLowerCase();
+
+      // Handle text files directly
+      if (fileType === 'text/plain') {
         const text = await file.text();
         
+        console.log('Analyzing text document...');
         const { data, error } = await supabase.functions.invoke('analyze-document', {
           body: { text }
         });
 
-        if (error) throw error;
+        if (error) {
+          console.error('Analysis error:', error);
+          toast({
+            title: "Analysis failed",
+            description: error.message || "Failed to analyze document",
+            variant: "destructive",
+          });
+          return;
+        }
 
-        // Store results in sessionStorage for the results page
+        console.log('Analysis complete:', data);
         sessionStorage.setItem('analysisResults', JSON.stringify(data));
+        navigate('/results');
         
         toast({
-          title: "Analysis complete!",
-          description: `Found ${data.statistics.totalClauses} clauses`,
+          title: "Success",
+          description: "Document analyzed successfully",
+        });
+        return;
+      }
+
+      // Handle PDF, DOCX files - upload to storage first
+      if (
+        fileType === 'application/pdf' ||
+        fileType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+        fileExtension === 'pdf' ||
+        fileExtension === 'docx'
+      ) {
+        console.log('Uploading document to storage...');
+        
+        // Create a unique file path
+        const timestamp = Date.now();
+        const fileName = `${timestamp}-${file.name}`;
+        const filePath = `temp/${fileName}`;
+
+        // Upload file to storage
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('documents')
+          .upload(filePath, file, {
+            cacheControl: '3600',
+            upsert: false
+          });
+
+        if (uploadError) {
+          console.error('Upload error:', uploadError);
+          toast({
+            title: "Upload failed",
+            description: uploadError.message || "Failed to upload document",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        console.log('Document uploaded, analyzing...');
+
+        // Call edge function with file path
+        const { data, error } = await supabase.functions.invoke('analyze-document', {
+          body: { filePath }
         });
 
-        navigate("/results");
-      } else {
-        // For PDFs and other formats, show message
+        if (error) {
+          console.error('Analysis error:', error);
+          toast({
+            title: "Analysis failed",
+            description: error.message || "Failed to analyze document",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        console.log('Analysis complete:', data);
+        sessionStorage.setItem('analysisResults', JSON.stringify(data));
+        navigate('/results');
+        
         toast({
-          title: "PDF support coming soon",
-          description: "Please paste the text directly for now",
-          variant: "destructive",
+          title: "Success",
+          description: "Document analyzed successfully",
         });
+        return;
       }
-    } catch (error) {
-      console.error('Upload error:', error);
+
+      // Unsupported file type
       toast({
-        title: "Analysis failed",
-        description: error instanceof Error ? error.message : "Please try again",
+        title: "Unsupported file type",
+        description: "Please upload a PDF, DOCX, or TXT file",
+        variant: "destructive",
+      });
+
+    } catch (error) {
+      console.error('Error processing file:', error);
+      toast({
+        title: "Error",
+        description: "Failed to process file",
         variant: "destructive",
       });
     } finally {
       setIsUploading(false);
     }
-  }, [toast, navigate]);
+  }, [navigate, toast]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,

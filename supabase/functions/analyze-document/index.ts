@@ -1,5 +1,6 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.79.0';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -12,11 +13,104 @@ serve(async (req) => {
   }
 
   try {
-    const { text } = await req.json();
+    const { text, filePath } = await req.json();
     
-    if (!text || text.trim().length < 100) {
+    let documentText = text;
+
+    // If filePath is provided, download and parse the file
+    if (filePath && !text) {
+      console.log('Downloading and parsing file:', filePath);
+      
+      const supabaseUrl = Deno.env.get('SUPABASE_URL');
+      const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+      
+      if (!supabaseUrl || !supabaseServiceKey) {
+        return new Response(
+          JSON.stringify({ error: 'Server configuration error' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+      // Download file from storage
+      const { data: fileData, error: downloadError } = await supabase.storage
+        .from('documents')
+        .download(filePath);
+
+      if (downloadError || !fileData) {
+        console.error('Error downloading file:', downloadError);
+        return new Response(
+          JSON.stringify({ error: 'Failed to download file' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Parse based on file type
+      const fileExtension = filePath.split('.').pop()?.toLowerCase();
+      
+      try {
+        if (fileExtension === 'pdf') {
+          // For PDF, use Mozilla's PDF.js
+          const pdfjs = await import('https://esm.sh/pdfjs-dist@4.0.379/legacy/build/pdf.mjs');
+          
+          const arrayBuffer = await fileData.arrayBuffer();
+          const typedArray = new Uint8Array(arrayBuffer);
+          
+          const loadingTask = pdfjs.getDocument({ data: typedArray });
+          const pdfDoc = await loadingTask.promise;
+          
+          let fullText = '';
+          for (let i = 1; i <= pdfDoc.numPages; i++) {
+            const page = await pdfDoc.getPage(i);
+            const textContent = await page.getTextContent();
+            const pageText = textContent.items.map((item: any) => item.str).join(' ');
+            fullText += pageText + '\n';
+          }
+          
+          documentText = fullText;
+          console.log('Extracted text from PDF:', documentText.length, 'characters');
+        } else if (fileExtension === 'docx') {
+          const arrayBuffer = await fileData.arrayBuffer();
+          // Use a simpler approach for DOCX - extract via API
+          const formData = new FormData();
+          formData.append('file', new Blob([arrayBuffer]));
+          
+          // For now, return error for DOCX until we implement proper parser
+          return new Response(
+            JSON.stringify({ error: 'DOCX support coming soon. Please convert to PDF or paste text directly.' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        } else if (fileExtension === 'doc') {
+          // DOC format is more complex, fallback to error
+          return new Response(
+            JSON.stringify({ error: 'Legacy DOC format not supported. Please convert to DOCX or PDF.' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        } else if (fileExtension === 'txt') {
+          documentText = await fileData.text();
+          console.log('Extracted text from TXT:', documentText.length, 'characters');
+        } else {
+          return new Response(
+            JSON.stringify({ error: 'Unsupported file format' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+      } catch (parseError) {
+        console.error('Error parsing file:', parseError);
+        return new Response(
+          JSON.stringify({ error: 'Failed to parse document. Please ensure the file is not corrupted.' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Clean up: delete the file from storage after parsing
+      await supabase.storage.from('documents').remove([filePath]);
+    }
+    
+    if (!documentText || documentText.trim().length < 100) {
       return new Response(
-        JSON.stringify({ error: 'Text must be at least 100 characters' }),
+        JSON.stringify({ error: 'Document text must be at least 100 characters' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -57,7 +151,7 @@ Identify 3-7 major clauses from the document.`
           },
           {
             role: 'user',
-            content: `Segment this legal document into clauses:\n\n${text}`
+            content: `Segment this legal document into clauses:\n\n${documentText}`
           }
         ],
         temperature: 0.3,
