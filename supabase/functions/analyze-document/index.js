@@ -64,7 +64,7 @@ serve(async (req) => {
           for (let i = 1; i <= pdfDoc.numPages; i++) {
             const page = await pdfDoc.getPage(i);
             const textContent = await page.getTextContent();
-            const pageText = textContent.items.map((item: any) => item.str).join(' ');
+            const pageText = textContent.items.map((item) => item.str).join(' ');
             fullText += pageText + '\n';
           }
           
@@ -189,7 +189,7 @@ Identify 3-7 major clauses from the document.`
 
     // Step 2: Analyze each clause for risk and summaries
     const analyzedClauses = await Promise.all(
-      clauses.map(async (clause: any, index: number) => {
+      clauses.map(async (clause, index) => {
         const analysisResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
           method: 'POST',
           headers: {
